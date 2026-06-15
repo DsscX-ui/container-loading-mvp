@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmartStuffing Pro | Load Simulator</title>
+    <style>
+        /* =========================================
+           1. CORE VARIABLES (LIGHT & DARK MODE)
+           ========================================= */
+        :root {
+            /* Light Theme (Industrial Steel) */
+            --bg-base: #E2E8F0;
+            --bg-panel: #FFFFFF;
+            --bg-input: #F8FAFC;
+            --text-main: #1E293B;
+            --text-muted: #64748B;
+            --border-color: #CBD5E1;
+            
+            --primary: #0F4C81; /* Steel Blue */
+            --primary-hover: #1E3A8A;
+            --accent: #475569; /* Graphite */
+            
+            --status-ok: #10B981; /* Viable */
+            --status-warn: #F59E0B; /* Límite */
+            --status-err: #EF4444; /* Excedido */
+            
+            --canvas-floor: #F1F5F9;
+            --canvas-grid: #E2E8F0;
+            --box-fill: #94A3B8;
+            --box-stroke: #475569;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+            
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        [data-theme="dark"] {
+            /* Dark Theme (Night Operations) */
+            --bg-base: #0F172A;
+            --bg-panel: #1E293B;
+            --bg-input: #0F172A;
+            --text-main: #F8FAFC;
+            --text-muted: #94A3B8;
+            --border-color: #334155;
+            
+            --primary: #38BDF8; /* Neon Light Blue */
+            --primary-hover: #0EA5E9;
+            --accent: #94A3B8;
+            
+            --status-ok: #34D399;
+            --status-warn: #FBBF24;
+            --status-err: #F87171;
+
+            --canvas-floor: #0B1120;
+            --canvas-grid: #1E293B;
+            --box-fill: #475569;
+            --box-stroke: #94A3B8;
+
+            --shadow-sm: 0 1px 2px 0 rgba(0,0,0,0.5);
+            --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.5);
+            --shadow-inner: inset 0 2px 4px 0 rgba(0,0,0,0.5);
+        }
+
+        /* =========================================
+           2. GLOBAL RESET & TYPOGRAPHY
+           ========================================= */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-base);
+            color: var(--text-main);
+            line-height: 1.5;
+            transition: var(--transition);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* =========================================
+           3. LAYOUT & HEADER
+           ========================================= */
+        header {
+            background-color: var(--bg-panel);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .logo-area h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.025em;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .logo-area span {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Theme Toggle Switch */
+        .theme-switch-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        .theme-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        .theme-switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: var(--border-color);
+            transition: .4s; border-radius: 24px;
+        }
+        .slider:before {
+            position: absolute; content: "";
+            height: 18px; width: 18px;
+            left: 3px; bottom: 3px;
+            background-color: #FFF;
+            transition: .4s; border-radius: 50%;
+            box-shadow: var(--shadow-sm);
+        }
+        input:checked + .slider { background-color: var(--primary); }
+        input:checked + .slider:before { transform: translateX(20px); }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 1.5rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+            width: 100%;
+            flex-grow: 1;
+        }
+
+        /* =========================================
+           4. PANELS & FORMS
+           ========================================= */
+        .panel {
+            background-color: var(--bg-panel);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: var(--shadow-md);
+            transition: var(--transition);
+        }
+
+        .panel-header {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 1.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .panel-header::after {
+            content: ""; flex-grow: 1;
+            height: 1px; background-color: var(--border-color);
+        }
+
+        .form-group { margin-bottom: 1.25rem; }
+        .form-group label {
+            display: block; font-size: 0.875rem;
+            font-weight: 600; margin-bottom: 0.5rem;
+            color: var(--text-main);
+        }
+        
+        .input-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+
+        input, select {
+            width: 100%; padding: 0.625rem;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 4px; font-size: 0.875rem;
+            transition: var(--transition);
+            box-shadow: var(--shadow-inner);
+        }
+        input:focus, select:focus {
+            outline: none; border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(15, 76, 129, 0.1);
+        }
+        [data-theme="dark"] input:focus, [data-theme="dark"] select:focus {
+            box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.2);
+        }
+
+        .btn {
+            width: 100%; padding: 0.75rem;
+            border: none; border-radius: 4px;
+            font-weight: 600; font-size: 0.875rem;
+            cursor: pointer; transition: var(--transition);
+            text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .btn-primary {
+            background-color: var(--primary); color: #FFF;
+            margin-top: 1rem; box-shadow: var(--shadow-sm);
+        }
+        .btn-primary:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px); box-shadow: var(--shadow-md);
+        }
+        .btn-secondary {
+            background-color: transparent; color: var(--text-muted);
+            border: 1px solid var(--border-color); margin-top: 0.5rem;
+        }
+        .btn-secondary:hover {
+            background-color: var(--bg-base); color: var(--text-main);
+        }
+
+        /* =========================================
+           5. DATA VISUALIZATION (SVG GAUGES & KPIS)
+           ========================================= */
+        .metrics-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 1.5rem; margin-bottom: 1.5rem;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-base);
+            border: 1px solid var(--border-color);
+            border-radius: 6px; padding: 1.25rem;
+            display: flex; flex-direction: column;
+            align-items: center; position: relative;
+        }
+
+        /* Custom SVG Semi-Circle Gauge */
+        .gauge-container {
+            width: 120px; height: 60px; /* Half height of width */
+            position: relative; overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+        .gauge-svg { width: 100%; height: 200%; /* Double height to cut off */ }
+        
+        .gauge-bg { fill: none; stroke: var(--border-color); stroke-width: 12; }
+        .gauge-val {
+            fill: none; stroke: var(--status-ok); stroke-width: 12;
+            stroke-linecap: round;
+            /* Arc length for r=40 is ~125.6 */
+            stroke-dasharray: 125.6; stroke-dashoffset: 125.6;
+            transition: stroke-dashoffset 1s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.5s;
+        }
+
+        .kpi-value-text {
+            position: absolute; bottom: 0; left: 50%;
+            transform: translateX(-50%);
+            font-size: 1.5rem; font-weight: 800;
+            color: var(--text-main);
+        }
+        .kpi-label {
+            font-size: 0.75rem; text-transform: uppercase;
+            letter-spacing: 0.05em; color: var(--text-muted);
+            text-align: center; font-weight: 600;
+        }
+
+        /* Units Box (Different style, no gauge) */
+        .kpi-units {
+            justify-content: center;
+        }
+        .units-big { font-size: 2.5rem; font-weight: 800; color: var(--primary); line-height: 1;}
+        .units-sub { font-size: 0.875rem; color: var(--text-muted); margin-top: 0.5rem; font-weight: 500;}
+
+        /* Smart Messages */
+        .smart-console {
+            background-color: var(--bg-base);
+            border-left: 4px solid var(--primary);
+            padding: 1rem; border-radius: 0 4px 4px 0;
+            font-size: 0.875rem; color: var(--text-main);
+            margin-bottom: 1.5rem; min-height: 60px;
+            display: flex; align-items: center; font-weight: 500;
+            box-shadow: var(--shadow-sm);
+        }
+
+        /* =========================================
+           6. ADVANCED CANVAS
+           ========================================= */
+        .canvas-wrapper {
+            background-color: var(--canvas-floor);
+            border: 2px solid var(--border-color);
+            border-radius: 4px; overflow: hidden;
+            position: relative; padding: 1.5rem;
+            display: flex; justify-content: center; align-items: center;
+            /* Technical grid background */
+            background-image: 
+                linear-gradient(var(--canvas-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--canvas-grid) 1px, transparent 1px);
+            background-size: 20px 20px;
+            box-shadow: inset 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        canvas {
+            background: rgba(255,255,255,0.02); /* Slight tint to differentiate from floor */
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+            border: 1px solid var(--border-color);
+        }
+
+        .legend {
+            display: flex; gap: 1.5rem; justify-content: center;
+            margin-top: 1rem; font-size: 0.75rem; font-weight: 600;
+            color: var(--text-muted); text-transform: uppercase;
+        }
+        .legend-item { display: flex; align-items: center; gap: 0.5rem; }
+        .dot { width: 12px; height: 12px; border-radius: 2px; }
+
+        /* Processing Animation State */
+        .is-processing { opacity: 0.5; pointer-events: none; }
+
+        @media (max-width: 1024px) {
+            .dashboard { grid-template-columns: 1fr; }
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-area">
+            <h1>SmartStuffing <span>Pro</span></h1>
+        </div>
+        <div class="theme-switch-wrapper">
+            <span>CLARO</span>
+            <label class="theme-switch" for="checkbox">
+                <input type="checkbox" id="checkbox" />
+                <div class="slider"></div>
+            </label>
+            <span>OSCURO</span>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <aside class="panel">
+            <div class="panel-header">1. Parámetros del Equipo</div>
+            
+            <div class="form-group">
+                <label>Tipo de Contenedor ISO</label>
+                <select id="containerType">
+                    <option value="20STD">20' Dry Standard (33.2 m³ / 28.2 t)</option>
+                    <option value="40STD">40' Dry Standard (67.7 m³ / 28.8 t)</option>
+                    <option value="40HC">40' High Cube (76.4 m³ / 28.6 t)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Unidad de Manejo (Handling Unit)</label>
+                <select id="palletType">
+                    <option value="none">Carga Suelta (Floor Loaded)</option>
+                    <option value="euro">Europallet (120 x 80 cm)</option>
+                    <option value="american">Pallet Americano (120 x 100 cm)</option>
+                </select>
+            </div>
+
+            <div class="panel-header" style="margin-top: 2rem;">2. Master Carton / SKU</div>
+            
+            <div class="form-group">
+                <label>Dimensiones Externas (cm) [L x A x H]</label>
+                <div class="input-grid">
+                    <input type="number" id="boxL" placeholder="L" value="60" title="Largo">
+                    <input type="number" id="boxW" placeholder="W" value="40" title="Ancho">
+                    <input type="number" id="boxH" placeholder="H" value="40" title="Alto">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Peso Bruto Unitario (kg)</label>
+                <input type="number" id="boxWeight" value="15">
+            </div>
+
+            <div class="form-group">
+                <label>Cantidad a Exportar</label>
+                <input type="number" id="boxQty" value="350">
+            </div>
+
+            <button id="btnSimulate" class="btn btn-primary">Ejecutar Simulación</button>
+            <button id="btnReset" class="btn btn-secondary">Limpiar Escenario</button>
+        </aside>
+
+        <section class="panel" id="mainView">
+            <div class="panel-header">3. Telemetría Operativa</div>
+            
+            <div id="smartConsole" class="smart-console">
+                Esperando ingreso de datos. Configure los parámetros y ejecute la simulación.
+            </div>
+
+            <div class="metrics-grid">
+                <div class="kpi-card">
+                    <div class="gauge-container">
+                        <svg class="gauge-svg" viewBox="0 0 100 100">
+                            <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+                            <path id="gaugeVol" class="gauge-val" d="M 10 50 A 40 40 0 0 1 90 50" />
+                        </svg>
+                        <div class="kpi-value-text" id="kpiVolText">0%</div>
+                    </div>
+                    <div class="kpi-label">Factor Volumétrico</div>
+                </div>
+
+                <div class="kpi-card">
+                    <div class="gauge-container">
+                        <svg class="gauge-svg" viewBox="0 0 100 100">
+                            <path class="gauge-bg" d="M 10 50 A 40 40 0 0 1 90 50" />
+                            <path id="gaugeWeight" class="gauge-val" d="M 10 50 A 40 40 0 0 1 90 50" />
+                        </svg>
+                        <div class="kpi-value-text" id="kpiWeightText">0%</div>
+                    </div>
+                    <div class="kpi-label">Payload (Peso Útil)</div>
+                </div>
+
+                <div class="kpi-card kpi-units">
+                    <div class="units-big" id="kpiUnits">0<span style="font-size:1.2rem; color:var(--text-muted)">/0</span></div>
+                    <div class="units-sub" id="kpiFormat">Cajas Sueltas</div>
+                    <div class="kpi-label" style="margin-top: 1rem;">Consolidación</div>
+                </div>
+            </div>
+
+            <div class="panel-header">4. Proyección de Estiba (Top-Down 2D)</div>
+            <div class="canvas-wrapper">
+                <canvas id="cargoCanvas" width="850" height="300"></canvas>
+            </div>
+            <div class="legend">
+                <div class="legend-item"><div class="dot" style="background: var(--box-fill);"></div> Mercancía</div>
+                <div class="legend-item"><div class="dot" style="background: transparent; border: 1px solid var(--border-color);"></div> Espacio Residual</div>
+                <div class="legend-item"><div class="dot" style="background: var(--status-err);"></div> Acceso (Puertas)</div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // --- THEME LOGIC ---
+        const toggleSwitch = document.querySelector('.theme-switch input[type="checkbox"]');
+        const currentTheme = localStorage.getItem('theme');
+
+        if (currentTheme) {
+            document.documentElement.setAttribute('data-theme', currentTheme);
+            if (currentTheme === 'dark') toggleSwitch.checked = true;
+        }
+
+        function switchTheme(e) {
+            if (e.target.checked) {
+                document.documentElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                document.documentElement.setAttribute('data-theme', 'light');
+                localStorage.setItem('theme', 'light');
+            }
+            // Re-draw canvas if data exists to update colors
+            if (lastSimData) drawAdvancedCanvas(lastSimData.cont, lastSimData.itemDim, lastSimData.grid, lastSimData.items);
+        }
+        toggleSwitch.addEventListener('change', switchTheme);
+
+
+        // --- LOGISTICS DATABASE ---
+        const DB_CONTAINERS = {
+            '20STD': { l: 589, w: 235, h: 239, payload: 28200, vol: 33.2, name: "20' Dry" },
+            '40STD': { l: 1203, w: 235, h: 239, payload: 28800, vol: 67.7, name: "40' Dry" },
+            '40HC':  { l: 1203, w: 235, h: 269, payload: 28600, vol: 76.4, name: "40' High Cube" }
+        };
+
+        const DB_PALLETS = {
+            'none':     { l: 0, w: 0, h: 0, tare: 0, isPallet: false },
+            'euro':     { l: 120, w: 80, h: 15, tare: 25, isPallet: true },
+            'american': { l: 120, w: 100, h: 15, tare: 30, isPallet: true }
+        };
+
+        // --- DOM ELEMENTS ---
+        const ui = {
+            contType: document.getElementById('containerType'),
+            palType: document.getElementById('palletType'),
+            boxL: document.getElementById('boxL'),
+            boxW: document.getElementById('boxW'),
+            boxH: document.getElementById('boxH'),
+            boxWeight: document.getElementById('boxWeight'),
+            boxQty: document.getElementById('boxQty'),
+            btnSim: document.getElementById('btnSimulate'),
+            btnReset: document.getElementById('btnReset'),
+            console: document.getElementById('smartConsole'),
+            kpiVolText: document.getElementById('kpiVolText'),
+            kpiWeightText: document.getElementById('kpiWeightText'),
+            kpiUnits: document.getElementById('kpiUnits'),
+            kpiFormat: document.getElementById('kpiFormat'),
+            gaugeVol: document.getElementById('gaugeVol'),
+            gaugeWeight: document.getElementById('gaugeWeight'),
+            canvas: document.getElementById('cargoCanvas'),
+            ctx: document.getElementById('cargoCanvas').getContext('2d'),
+            mainView: document.getElementById('mainView')
+        };
+
+        let lastSimData = null; // Store for theme switching
+
+        // --- CALCULATION LOGIC (Core Maintained, Output Enhanced) ---
+        function calculateStuffing() {
+            // UI Feedback
+            ui.mainView.classList.add('is-processing');
+            
+            setTimeout(() => {
+                const cont = DB_CONTAINERS[ui.contType.value];
+                const pal = DB_PALLETS[ui.palType.value];
+                const box = {
+                    l: parseFloat(ui.boxL.value), w: parseFloat(ui.boxW.value),
+                    h: parseFloat(ui.boxH.value), wt: parseFloat(ui.boxWeight.value)
+                };
+                const qtyDemanded = parseInt(ui.boxQty.value);
+
+                if (!box.l || !box.w || !box.h || !box.wt || !qtyDemanded) {
+                    setSmartMessage('Error de Validación: Dimensiones, peso o cantidad incompletos.', 'err');
+                    ui.mainView.classList.remove('is-processing');
+                    return;
+                }
+
+                let loadedBoxes = 0, loadedPallets = 0, totalWeight = 0;
+                let itemTypeForFloor = '';
+                let itemDimensions = { l: 0, w: 0 };
+                let gridPattern = { rows: 0, cols: 0 };
+
+                // LOGIC
+                if (pal.isPallet) {
+                    const b1 = Math.floor(pal.l / box.l) * Math.floor(pal.w / box.w);
+                    const b2 = Math.floor(pal.l / box.w) * Math.floor(pal.w / box.l);
+                    const bLayer = Math.max(b1, b2);
+
+                    if (bLayer === 0) {
+                        setSmartMessage('Incompatibilidad Geométrica: El empaque excede la huella del pallet seleccionado.', 'err');
+                        ui.mainView.classList.remove('is-processing');
+                        return;
+                    }
+
+                    const layers = Math.floor((cont.h - pal.h - 5) / box.h);
+                    const maxBPP = bLayer * layers;
+                    const pGross = (maxBPP * box.wt) + pal.tare;
+
+                    const p1 = Math.floor(cont.l / pal.l) * Math.floor(cont.w / pal.w);
+                    const p2 = Math.floor(cont.l / pal.w) * Math.floor(cont.w / pal.l);
+                    
+                    let maxPallets = 0;
+                    if (p1 >= p2) {
+                        maxPallets = p1;
+                        gridPattern = { rows: Math.floor(cont.l / pal.l), cols: Math.floor(cont.w / pal.w) };
+                        itemDimensions = { l: pal.l, w: pal.w };
+                    } else {
+                        maxPallets = p2;
+                        gridPattern = { rows: Math.floor(cont.l / pal.w), cols: Math.floor(cont.w / pal.l) };
+                        itemDimensions = { l: pal.w, w: pal.l };
+                    }
+
+                    const pNeeded = Math.ceil(qtyDemanded / maxBPP);
+                    loadedPallets = Math.min(pNeeded, maxPallets);
+                    
+                    while ((loadedPallets * pGross) > cont.payload && loadedPallets > 0) loadedPallets--;
+
+                    loadedBoxes = loadedPallets * maxBPP;
+                    if (loadedBoxes > qtyDemanded) loadedBoxes = qtyDemanded;
+                    totalWeight = (loadedBoxes * box.wt) + (loadedPallets * pal.tare);
+                    itemTypeForFloor = 'pallets';
+
+                } else {
+                    const opt1 = Math.floor(cont.l / box.l) * Math.floor(cont.w / box.w);
+                    const opt2 = Math.floor(cont.l / box.w) * Math.floor(cont.w / box.l);
+                    
+                    let bLayer = 0;
+                    if (opt1 >= opt2) {
+                        bLayer = opt1;
+                        gridPattern = { rows: Math.floor(cont.l / box.l), cols: Math.floor(cont.w / box.w) };
+                        itemDimensions = { l: box.l, w: box.w };
+                    } else {
+                        bLayer = opt2;
+                        gridPattern = { rows: Math.floor(cont.l / box.w), cols: Math.floor(cont.w / box.l) };
+                        itemDimensions = { l: box.w, w: box.l };
+                    }
+
+                    const layers = Math.floor((cont.h - 2) / box.h);
+                    const maxBoxes = bLayer * layers;
+                    loadedBoxes = Math.min(qtyDemanded, maxBoxes);
+                    
+                    while ((loadedBoxes * box.wt) > cont.payload && loadedBoxes > 0) loadedBoxes--;
+                    totalWeight = loadedBoxes * box.wt;
+                    itemTypeForFloor = 'cajas';
+                }
+
+                // KPIs
+                const boxVolM3 = (box.l * box.w * box.h) / 1000000;
+                const effectiveVolM3 = pal.isPallet ? 
+                    loadedPallets * ((pal.l * pal.w * (pal.h + (Math.floor((cont.h-pal.h)/box.h)*box.h))) / 1000000) : 
+                    loadedBoxes * boxVolM3;
+
+                const volPct = Math.min((effectiveVolM3 / cont.vol) * 100, 100);
+                const weightPct = (totalWeight / cont.payload) * 100;
+                let floorItems = itemTypeForFloor === 'pallets' ? loadedPallets : Math.ceil(loadedBoxes / Math.floor((cont.h - (pal.isPallet?pal.h:0)) / box.h));
+
+                // Save for theme changes
+                lastSimData = { cont, itemDim: itemDimensions, grid: gridPattern, items: floorItems };
+
+                updateDashboard(volPct, weightPct, loadedBoxes, qtyDemanded, loadedPallets, itemTypeForFloor);
+                generateSmartAnalysis(volPct, weightPct, loadedBoxes, qtyDemanded, cont.name);
+                drawAdvancedCanvas(cont, itemDimensions, gridPattern, floorItems);
+
+                ui.mainView.classList.remove('is-processing');
+
+            }, 300); // Artificial delay for software feel
+        }
+
+        // --- ADVANCED UI UPDATES ---
+        function updateGauge(svgElement, textElement, percent) {
+            const val = Math.max(0, Math.min(100, percent));
+            // 125.6 is max dashoffset for r=40 semicicle
+            const offset = 125.6 - (125.6 * (val / 100));
+            
+            svgElement.style.strokeDashoffset = offset;
+            textElement.textContent = val.toFixed(1) + '%';
+
+            // Color Logic (Using CSS Variables)
+            const style = getComputedStyle(document.body);
+            let color = style.getPropertyValue('--status-ok');
+            if (val >= 95) color = style.getPropertyValue('--status-err');
+            else if (val >= 85) color = style.getPropertyValue('--status-warn');
+            
+            svgElement.style.stroke = color;
+        }
+
+        function updateDashboard(vPct, wPct, boxes, demanded, pallets, type) {
+            updateGauge(ui.gaugeVol, ui.kpiVolText, vPct);
+            updateGauge(ui.gaugeWeight, ui.kpiWeightText, wPct);
+
+            ui.kpiUnits.innerHTML = `${boxes}<span style="font-size:1.2rem; color:var(--text-muted)">/${demanded}</span>`;
+            
+            if (type === 'pallets') {
+                ui.kpiFormat.innerHTML = `Estructurado en <strong>${pallets} Pallets</strong>`;
+            } else {
+                ui.kpiFormat.innerHTML = `Carga Suelta (Floor Loaded)`;
+            }
+        }
+
+        function setSmartMessage(msg, type = 'info') {
+            const style = getComputedStyle(document.body);
+            let color = style.getPropertyValue('--primary');
+            if(type === 'err') color = style.getPropertyValue('--status-err');
+            if(type === 'warn') color = style.getPropertyValue('--status-warn');
+            if(type === 'ok') color = style.getPropertyValue('--status-ok');
+
+            ui.console.style.borderLeftColor = color;
+            ui.console.innerHTML = msg;
+        }
+
+        function generateSmartAnalysis(vPct, wPct, loaded, demanded, contName) {
+            if (loaded < demanded) {
+                let reason = wPct >= 99 ? "exceso de peso (Payload)" : "limitación volumétrica";
+                setSmartMessage(`<strong>⚠️ Capacidad Insuficiente:</strong> Solo se acomodaron ${loaded} unidades debido a ${reason}. Se requiere un equipo adicional o evaluar un ${contName === "20' Dry" ? "40' Dry" : "High Cube"}.`, 'err');
+                return;
+            }
+
+            if (wPct >= 95 && vPct < 70) {
+                setSmartMessage(`<strong>⚖️ Carga Densa (Deadweight):</strong> Límite de Payload alcanzado (${wPct.toFixed(1)}%). Existe un alto volumen vacío, pero ingresar más carga excedería las normas de tránsito.`, 'warn');
+            } else if (vPct >= 90 && wPct < 60) {
+                setSmartMessage(`<strong>📦 Carga Voluminosa:</strong> Excelente aprovechamiento del factor de estiba sin comprometer la capacidad de peso del chasis.`, 'ok');
+            } else if (vPct > 85 && wPct > 85) {
+                setSmartMessage(`<strong>⭐ Estiba Óptima:</strong> Balance perfecto entre volumen y peso. Alta rentabilidad del flete.`, 'ok');
+            } else {
+                setSmartMessage(`<strong>ℹ️ Plan Viable:</strong> Escenario simulado con éxito. Queda margen operativo seguro (Espacio: ${(100-vPct).toFixed(1)}%, Peso: ${(100-wPct).toFixed(1)}%).`, 'info');
+            }
+        }
+
+        function drawAdvancedCanvas(cont, itemDim, grid, totalItems) {
+            const ctx = ui.ctx;
+            const cvsW = ui.canvas.width;
+            const cvsH = ui.canvas.height;
+            
+            ctx.clearRect(0, 0, cvsW, cvsH);
+
+            const padding = 30;
+            const scale = Math.min((cvsW - padding*2) / cont.l, (cvsH - padding*2) / cont.w);
+            const contPxL = cont.l * scale;
+            const contPxW = cont.w * scale;
+            const startX = (cvsW - contPxL) / 2;
+            const startY = (cvsH - contPxW) / 2;
+
+            const style = getComputedStyle(document.body);
+            const colorBorder = style.getPropertyValue('--border-color').trim();
+            const colorDoor = style.getPropertyValue('--status-err').trim();
+            const boxFill = style.getPropertyValue('--box-fill').trim();
+            const boxStroke = style.getPropertyValue('--box-stroke').trim();
+
+            // 1. Draw Container Base (Metallic feel)
+            ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--bg-panel');
+            ctx.fillRect(startX, startY, contPxL, contPxW);
+            
+            // Container Walls (Thick stroke)
+            ctx.strokeStyle = colorBorder;
+            ctx.lineWidth = 4;
+            ctx.strokeRect(startX, startY, contPxL, contPxW);
+
+            // Doors (Right side, distinctive red)
+            ctx.fillStyle = colorDoor;
+            ctx.fillRect(startX + contPxL - 6, startY + 2, 6, contPxW - 4);
+
+            // Center line (visual aid)
+            ctx.beginPath();
+            ctx.setLineDash([5, 5]);
+            ctx.moveTo(startX, startY + contPxW/2);
+            ctx.lineTo(startX + contPxL, startY + contPxW/2);
+            ctx.strokeStyle = "rgba(100,100,100,0.2)";
+            ctx.lineWidth = 1;
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+
+            // 2. Draw Cargo with Depth
+            const itemPxL = itemDim.l * scale;
+            const itemPxW = itemDim.w * scale;
+            let drawn = 0;
+
+            // Setup Shadows for 3D effect
+            ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+
+            for (let c = 0; c < grid.rows; c++) {
+                for (let r = 0; r < grid.cols; r++) {
+                    if (drawn >= totalItems) break;
+
+                    const x = startX + (c * itemPxL);
+                    const yOffset = (contPxW - (grid.cols * itemPxW)) / 2; 
+                    const y = startY + yOffset + (r * itemPxW);
+
+                    // Gradient for slightly metallic/industrial boxes
+                    let grad = ctx.createLinearGradient(x, y, x+itemPxL, y+itemPxW);
+                    grad.addColorStop(0, boxFill);
+                    grad.addColorStop(1, boxStroke);
+
+                    ctx.fillStyle = grad;
+                    ctx.fillRect(x + 2, y + 2, itemPxL - 4, itemPxW - 4);
+                    
+                    // Draw border without shadow
+                    ctx.shadowColor = "transparent";
+                    ctx.strokeStyle = "rgba(255,255,255,0.2)"; // Highlight edge
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x + 2, y + 2, itemPxL - 4, itemPxW - 4);
+                    
+                    // Restore shadow for next box
+                    ctx.shadowColor = "rgba(0, 0, 0, 0.3)";
+                    
+                    drawn++;
+                }
+            }
+
+            // Reset shadows for text
+            ctx.shadowColor = "transparent";
+            
+            // Labels
+            ctx.fillStyle = style.getPropertyValue('--text-muted');
+            ctx.font = '600 11px system-ui';
+            ctx.fillText('FONDO (FRONT WALL)', startX - 20, startY - 10);
+            ctx.fillText('PUERTAS (DOORS)', startX + contPxL - 80, startY - 10);
+        }
+
+        function resetForm() {
+            ui.boxL.value = ''; ui.boxW.value = ''; ui.boxH.value = '';
+            ui.boxWeight.value = ''; ui.boxQty.value = '';
+            
+            updateGauge(ui.gaugeVol, ui.kpiVolText, 0);
+            updateGauge(ui.gaugeWeight, ui.kpiWeightText, 0);
+            ui.kpiUnits.innerHTML = `0<span style="font-size:1.2rem; color:var(--text-muted)">/0</span>`;
+            ui.kpiFormat.innerHTML = 'Cajas Sueltas';
+            
+            setSmartMessage('Escenario reiniciado. Ingrese nuevos parámetros logísticos.', 'info');
+            ui.ctx.clearRect(0, 0, ui.canvas.width, ui.canvas.height);
+            lastSimData = null;
+        }
+
+        // Initialize zero states on load
+        updateGauge(ui.gaugeVol, ui.kpiVolText, 0);
+        updateGauge(ui.gaugeWeight, ui.kpiWeightText, 0);
+
+        ui.btnSim.addEventListener('click', calculateStuffing);
+        ui.btnReset.addEventListener('click', resetForm);
+
+    </script>
+</body>
+</html>
